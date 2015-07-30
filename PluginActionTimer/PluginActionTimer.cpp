@@ -26,6 +26,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include <Windows.h>
 #include "../RainmeterAPI/RainmeterAPI.h"
 
+// Copied from Rainmeter.h
+#define RAINMETER_CLASS_NAME	L"DummyRainWClass"
+#define RAINMETER_WINDOW_NAME	L"Rainmeter control window"
+#define WM_RAINMETER_EXECUTE WM_APP + 2
+
 // Copied from Rainmeter library
 std::vector<std::wstring> Tokenize(const std::wstring& str, const std::wstring& delimiters)
 {
@@ -63,6 +68,7 @@ struct Action
 {
 	std::vector<std::wstring> action;
 
+	HWND rainmeterWindow;
 	void* skin;
 	std::mutex mutex;
 	std::atomic<bool> interrupt;
@@ -70,8 +76,9 @@ struct Action
 	std::condition_variable signal;
 	std::condition_variable cleanUp;
 
-	Action(void* _skin) :
+	Action(HWND _hwnd, void* _skin) :
 		action(),
+		rainmeterWindow(_hwnd),
 		skin(_skin),
 		interrupt(false),
 		isRunning(false)
@@ -103,6 +110,7 @@ PLUGIN_EXPORT void Reload(void* data, void* rm, double* maxValue)
 	Measure* measure = (Measure*)data;
 
 	void* skin = RmGetSkin(rm);
+	HWND window = FindWindow(RAINMETER_CLASS_NAME, RAINMETER_WINDOW_NAME);
 
 	size_t i = 1;
 	std::vector<std::wstring> tokens;
@@ -125,7 +133,7 @@ PLUGIN_EXPORT void Reload(void* data, void* rm, double* maxValue)
 		}
 		else
 		{
-			Action* act = new Action(skin);
+			Action* act = new Action(window, skin);
 			std::lock_guard<std::mutex> lock(act->mutex);
 			act->action = tokens;
 			measure->list.push_back(act);
@@ -254,7 +262,7 @@ void ExecuteAction(Action* action)
 			}
 		}
 
-		RmExecute(action->skin, action->action[i].c_str());
+		SendNotifyMessage(action->rainmeterWindow, WM_RAINMETER_EXECUTE, (WPARAM)action->skin, (LPARAM)action->action[i].c_str());
 	}
 
 	action->isRunning = false;
