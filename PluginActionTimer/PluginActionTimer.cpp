@@ -27,8 +27,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../RainmeterAPI/RainmeterAPI.h"
 
 // Copied from Rainmeter.h
-#define RAINMETER_CLASS_NAME	L"DummyRainWClass"
-#define RAINMETER_WINDOW_NAME	L"Rainmeter control window"
+#define RAINMETER_CLASS_NAME				L"DummyRainWClass"
+#define RAINMETER_WINDOW_NAME				L"Rainmeter control window"
 #define WM_RAINMETER_EXECUTE WM_APP + 2
 
 // Copied from Rainmeter library
@@ -91,8 +91,9 @@ struct Measure
 	bool ignoreWarnings;
 
 	void* rm;
+	HWND mainRainmeterWindow;
 
-	Measure() : ignoreWarnings(false) { }
+	Measure() : ignoreWarnings(false), mainRainmeterWindow(nullptr) { }
 };
 
 void ExecuteAction(Action* action);
@@ -103,6 +104,7 @@ PLUGIN_EXPORT void Initialize(void** data, void* rm)
 	*data = measure;
 
 	measure->rm = rm;
+	measure->mainRainmeterWindow = FindWindow(RAINMETER_CLASS_NAME, RAINMETER_WINDOW_NAME);
 }
 
 PLUGIN_EXPORT void Reload(void* data, void* rm, double* maxValue)
@@ -110,7 +112,6 @@ PLUGIN_EXPORT void Reload(void* data, void* rm, double* maxValue)
 	Measure* measure = (Measure*)data;
 
 	void* skin = RmGetSkin(rm);
-	HWND window = FindWindow(RAINMETER_CLASS_NAME, RAINMETER_WINDOW_NAME);
 
 	size_t i = 1;
 	std::vector<std::wstring> tokens;
@@ -157,7 +158,7 @@ PLUGIN_EXPORT void Reload(void* data, void* rm, double* maxValue)
 		}
 		else
 		{
-			Action* act = new Action(window, skin);
+			Action* act = new Action(measure->mainRainmeterWindow, skin);
 			std::lock_guard<std::mutex> lock(act->mutex);
 			act->action = tokens;
 			measure->list.push_back(act);
