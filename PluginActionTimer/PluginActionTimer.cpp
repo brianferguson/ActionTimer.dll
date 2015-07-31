@@ -118,11 +118,35 @@ PLUGIN_EXPORT void Reload(void* data, void* rm, double* maxValue)
 	while (!action.empty())
 	{
 		tokens = Tokenize(action, L"|");
-		for (auto& iter : tokens)
+		for (size_t j = 0; j < tokens.size(); ++j)
 		{
-			if (_wcsnicmp(iter.c_str(), L"WAIT ", 5) != 0)
+			if (_wcsnicmp(tokens[j].c_str(), L"REPEAT ", 7) == 0)
 			{
-				iter = RmReadString(rm, iter.c_str(), L"[]", FALSE);
+				std::vector<std::wstring> repeat = Tokenize(tokens[j].substr(7), L",");
+				if (repeat.size() == 3)
+				{
+					// Erase repeat command from tokens if valid;
+					tokens.erase(tokens.begin() + j);
+
+					const std::wstring act = RmReadString(rm, repeat[0].c_str(), L"[]", FALSE);
+					const std::wstring wait = L"Wait " + repeat[1];
+					const int size = (_wtoi(repeat[2].c_str()) * 2) - 1;	// because we dont want a |wait| after the last command
+					if (size <= 0) continue;
+
+					// Insert a |wait| in between each |act|.
+					size_t k = 0;
+					for (; k < size; ++k)
+					{
+						if (k % 2 == 0) tokens.insert(tokens.begin() + (j + k), act);
+						else            tokens.insert(tokens.begin() + (j + k), wait);
+					}
+
+					j += k;		// Skip over inserted items
+				}
+			}
+			else if (_wcsnicmp(tokens[j].c_str(), L"WAIT ", 5) != 0)
+			{
+				tokens[j] = RmReadString(rm, tokens[j].c_str(), L"[]", FALSE);
 			}
 		}
 
